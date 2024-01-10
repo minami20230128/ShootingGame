@@ -13,11 +13,9 @@
     <img id="background" src="images/background.png" hidden>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <script type="module">
-        import init, {start} from './pkg/shooting_game.js';
+        import init from './pkg/shooting_game.js';
 
-        init().then(() => {
-            start();
-        })
+        init();
     </script>
 </body>
 </html>
