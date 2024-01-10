@@ -1,15 +1,15 @@
 use anyhow::{anyhow, Result};
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, JsValue};
 use crate::enemy::Enemy;
 use crate::player::Player;
 use crate::bullet::Bullet;
 use crate::logger::Logger;
-use web_sys::{window, CanvasRenderingContext2d, Document, HtmlCanvasElement};
+use web_sys::{window, CanvasRenderingContext2d, Document, HtmlCanvasElement, HtmlImageElement};
 
 pub struct Renderer {
     pub ctx: CanvasRenderingContext2d,
     pub canvas: HtmlCanvasElement,
-    images: std::collections::HashMap<String, web_sys::HtmlImageElement>,
+    images: std::collections::HashMap<String, HtmlImageElement>,
 }
 
 impl Renderer {
@@ -38,18 +38,25 @@ impl Renderer {
     }
 
     pub fn load_images(&mut self) {
-        let image_sources = vec![
-            ("player", "images/player.png"),
-            ("bullet", "images/bullet.png"),
-            ("enemy", "images/enemy.png"),
-            ("heart", "images/heart.png"),
-            ("background", "images/background.png"),
+        let window = window().expect("no global `window` exists");
+        let document = window.document().unwrap();
+
+        let image_ids = vec![
+            "player",
+            "bullet",
+            "enemy", 
+            "heart", 
+            "background",
         ];
 
-        for (name, src) in image_sources {
-            let image = web_sys::HtmlImageElement::new().unwrap();
-            image.set_src(src);
-            self.images.insert(name.to_string(), image);
+        for id in image_ids {
+            if let Some(img_element) = document.get_element_by_id(id) {
+                // img要素をHtmlImageElementとしてキャスト
+                let img = img_element
+                    .dyn_into::<HtmlImageElement>()
+                    .map_err(|_| JsValue::from("Failed to cast to HtmlImageElement"));
+                self.images.insert(id.to_string(), img.unwrap());
+            }
         }
     }
 
