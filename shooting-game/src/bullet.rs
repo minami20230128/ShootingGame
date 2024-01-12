@@ -1,15 +1,18 @@
+use std::rc::Rc;
+
+use web_sys::HtmlImageElement;
+
 use crate::position::Position;
 
 pub struct Bullet {
     pub position: Position,
-    pub width: f32,
-    pub height: f32,
-    velocity: u32
+    velocity: u32,
+    pub image: Rc<HtmlImageElement>
 }
 
 impl Bullet {
-    pub fn new(x: f32, y: f32) -> Bullet {
-        Bullet { position: Position::new(x, y), width: 90.0, height: 90.0, velocity: 5}
+    pub fn new(x: f32, y: f32, image: Rc<HtmlImageElement>) -> Bullet {
+        Bullet { position: Position::new(x, y), velocity: 5, image: image}
     }
 
     pub fn move_up(&mut self) {

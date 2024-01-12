@@ -14,8 +14,10 @@ use crate::logger::Logger;
 use crate::game_state::GameState;
 use crate::enemy_type::EnemyType;
 use crate::enemy_type::EnemySpawnInfo;
+use crate::resource_loader::{self, ResourceLoader};
 
 pub struct Game {
+    resource_loader: ResourceLoader, 
     pub renderer: Renderer,
     player: Player,
     bullets: Vec<Bullet>,
@@ -28,12 +30,17 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new() -> Result<Game, JsValue> {
+    pub fn new(resource_loader: ResourceLoader) -> Result<Game, JsValue> {
         Logger::log("Game new");
+        let renderer = Renderer::new();
+        let player_image = resource_loader.get_image("player");
+        let player_x = (renderer.canvas.width() / 2) as f32;
+        let player_y = (renderer.canvas.height() - 100) as f32;
 
         Ok(Game {
+            resource_loader: resource_loader,
             renderer: Renderer::new(),
-            player: Player::new(400.0, 500.0),
+            player: Player::new(player_x, player_y, player_image),
             bullets: Vec::new(),
             enemies: Rc::new(RefCell::new(Vec::new())),
             score: 0,
@@ -59,7 +66,7 @@ impl Game {
                 // 再度アニメーションフレームを要求
                 Game::start(game_rc.clone());
             } else if game.state == GameState::GameOver {
-                game.renderer.draw_life(game.player.get_life());
+                game.renderer.draw_life(game.player.get_life(), &game.resource_loader.get_image("heart"));
                 game.game_over();
             }
         }) as Box<dyn FnMut(f64)>);
@@ -102,7 +109,8 @@ impl Game {
 
         match enemy_type {
             EnemyType::Regular => {
-                enemies.borrow_mut().push(Enemy::new(x, 0.0));
+                let enemy_image = self.resource_loader.get_image("enemy");
+                enemies.borrow_mut().push(Enemy::new(x, 0.0, enemy_image));
             }
             EnemyType::Fast => {
                 //enemies.borrow_mut().push(Enemy::new(x, 0.0));
@@ -235,21 +243,23 @@ impl Game {
     }
 
     pub fn fire_bullet(&mut self) {
+        let bullet_image = self.resource_loader.get_image("bullet");
         let bullet = Bullet::new(
             self.player.position.x,
-            self.player.position.y
+            self.player.position.y, 
+            bullet_image,
         );
         self.bullets.push(bullet);
     }
 
     fn render(&self) {
         self.renderer.clear();
-        self.renderer.draw_background();
+        self.renderer.draw_background(&self.resource_loader.get_image("background"));
         self.renderer.draw_player(&self.player);
         self.renderer.draw_bullets(&self.bullets);
         self.renderer.draw_enemies(&self.enemies.borrow());
         self.renderer.draw_score(self.score);
-        self.renderer.draw_life(self.player.get_life());
+        self.renderer.draw_life(self.player.get_life(), &self.resource_loader.get_image("heart"));
 
         // 中心座標の点を描画
         self.renderer.draw_center_points(

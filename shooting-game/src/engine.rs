@@ -1,4 +1,4 @@
-use crate::game::Game;
+use crate::{game::Game, resource_loader::{self, ResourceLoader}};
 use std::cell::RefCell;
 use std::rc::Rc;
 use anyhow::{anyhow, Result};
@@ -20,10 +20,13 @@ pub fn start_game() {
             return;
         }
     }
+    let mut resource_loader = ResourceLoader::new();
+    resource_loader.load_images();
+
     let window = window().expect("no global window exists");
 
     // ゲームの初期化
-    let game_result = Game::new();
+    let game_result = Game::new(resource_loader);
 
     // Gameインスタンス生成のエラーハンドリング
     let game = match game_result {
@@ -68,7 +71,6 @@ pub fn start_game() {
             .expect("failed to add keyup listener");
         key_up_closure.forget();
     }
-//
-    game.borrow_mut().renderer.load_images();
+
     Game::start(game.clone());
 }

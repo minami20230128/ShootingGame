@@ -9,7 +9,6 @@ use web_sys::{window, CanvasRenderingContext2d, Document, HtmlCanvasElement, Htm
 pub struct Renderer {
     pub ctx: CanvasRenderingContext2d,
     pub canvas: HtmlCanvasElement,
-    images: std::collections::HashMap<String, HtmlImageElement>,
 }
 
 impl Renderer {
@@ -33,30 +32,6 @@ impl Renderer {
         Renderer {
             ctx,
             canvas,
-            images: std::collections::HashMap::new(),
-        }
-    }
-
-    pub fn load_images(&mut self) {
-        let window = window().expect("no global `window` exists");
-        let document = window.document().unwrap();
-
-        let image_ids = vec![
-            "player",
-            "bullet",
-            "enemy", 
-            "heart", 
-            "background",
-        ];
-
-        for id in image_ids {
-            if let Some(img_element) = document.get_element_by_id(id) {
-                // img要素をHtmlImageElementとしてキャスト
-                let img = img_element
-                    .dyn_into::<HtmlImageElement>()
-                    .map_err(|_| JsValue::from("Failed to cast to HtmlImageElement"));
-                self.images.insert(id.to_string(), img.unwrap());
-            }
         }
     }
 
@@ -64,47 +39,39 @@ impl Renderer {
         self.ctx.clear_rect(0.0, 0.0, self.canvas.width() as f64, self.canvas.height() as f64);
     }
 
-    pub fn draw_background(&self) {
-        if let Some(background) = self.images.get("background") {
-            self.ctx.draw_image_with_html_image_element(
-                background,
-                0.0,
-                0.0,
-            ).unwrap();
-        }
+    pub fn draw_background(&self, background_image: &HtmlImageElement) {
+        self.ctx.draw_image_with_html_image_element(
+            background_image,
+            0.0,
+            0.0,
+        ).unwrap();
     }
 
     pub fn draw_player(&self, player: &Player) {
-        if let Some(player_image) = self.images.get("player") {
-            self.ctx.draw_image_with_html_image_element(
-                player_image,
-                (player.position.x - player.width / 2.0) as f64,
-                (player.position.y - player.height / 2.0) as f64,
-            ).unwrap();
-        }
+        self.ctx.draw_image_with_html_image_element(
+            &player.image,
+            (player.position.x - player.image.width() as f32 / 2.0) as f64,
+            (player.position.y - player.image.height() as f32 / 2.0) as f64,
+        ).unwrap();
     }
 
     pub fn draw_bullets(&self, bullets: &Vec<Bullet>) {
-        if let Some(bullet_image) = self.images.get("bullet") {
-            for bullet in bullets {
-                self.ctx.draw_image_with_html_image_element(
-                    bullet_image,
-                    (bullet.position.x - bullet.width / 2.0) as f64,
-                    (bullet.position.y - bullet.height / 2.0) as f64,
-                ).unwrap();
-            }
+        for bullet in bullets {
+            self.ctx.draw_image_with_html_image_element(
+                &bullet.image,
+                (bullet.position.x - bullet.image.width() as f32 / 2.0) as f64,
+                (bullet.position.y - bullet.image.height() as f32 / 2.0) as f64,
+            ).unwrap();
         }
     }
 
     pub fn draw_enemies(&self, enemies: &Vec<Enemy>) {
-        if let Some(enemy_image) = self.images.get("enemy") {
-            for enemy in enemies {
-                self.ctx.draw_image_with_html_image_element(
-                    enemy_image,
-                    (enemy.position.x - enemy.width / 2.0) as f64,
-                    (enemy.position.y - enemy.height / 2.0) as f64
-                ).unwrap();
-            }
+        for enemy in enemies {
+            self.ctx.draw_image_with_html_image_element(
+                &enemy.image,
+                (enemy.position.x - enemy.image.width() as f32 / 2.0) as f64,
+                (enemy.position.y - enemy.image.height() as f32 / 2.0) as f64
+            ).unwrap();
         }
     }
 
@@ -114,16 +81,14 @@ impl Renderer {
         self.ctx.fill_text(&format!("Score: {}", score), 20.0, self.canvas.height() as f64 - 20.0).unwrap();
     }
 
-    pub fn draw_life(&self, life: u32) {
+    pub fn draw_life(&self, life: u32, heart_image: &HtmlImageElement) {
         let heart_size = 45.0;
-        if let Some(heart_image) = self.images.get("heart") {
-            for i in 0..life {
-                self.ctx.draw_image_with_html_image_element(
-                    heart_image,
-                    self.canvas.width() as f64 - 10.0 - (i + 1) as f64 * (heart_size + 5.0),
-                    self.canvas.height() as f64 - heart_size - 10.0
-                ).unwrap();
-            }
+        for i in 0..life {
+            self.ctx.draw_image_with_html_image_element(
+                heart_image,
+                self.canvas.width() as f64 - 10.0 - (i + 1) as f64 * (heart_size + 5.0),
+                self.canvas.height() as f64 - heart_size - 10.0
+            ).unwrap();
         }
     }
 
