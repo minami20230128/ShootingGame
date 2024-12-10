@@ -1,4 +1,5 @@
 use wasm_bindgen::prelude::*;
+use js_sys::Array;
 
 #[wasm_bindgen]
 pub struct Bullet {
@@ -17,8 +18,12 @@ impl Bullet {
         self.y -= 5.0; // 弾が上に向かって進む
     }
 
-    pub fn get_position(&self) -> (f32, f32) {
-        (self.x, self.y)
+       // 配列として位置情報を返す
+    pub fn get_position(&self) -> Array {
+        let arr = Array::new();
+        arr.push(&JsValue::from(self.x));
+        arr.push(&JsValue::from(self.y));
+        arr
     }
 }
 

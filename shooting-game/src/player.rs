@@ -1,4 +1,5 @@
 use wasm_bindgen::prelude::*;
+use js_sys::Array;
 
 #[wasm_bindgen]
 pub struct Player {
@@ -21,8 +22,11 @@ impl Player {
         self.x += 10.0;
     }
 
-    pub fn get_position(&self) -> (f32, f32) {
-        (self.x, self.y)
+    pub fn get_position(&self) -> Array {
+        let arr = Array::new();
+        arr.push(&JsValue::from(self.x));
+        arr.push(&JsValue::from(self.y));
+        arr
     }
 }
 
