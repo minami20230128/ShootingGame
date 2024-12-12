@@ -1,32 +1,55 @@
 use wasm_bindgen::prelude::*;
 use js_sys::Array;
+use image::GenericImageView;
 
 #[wasm_bindgen]
 pub struct Player {
     x: f32,
     y: f32,
+    width: f32,
+    height: f32,
+    life: u32,
 }
+
 
 #[wasm_bindgen]
 impl Player {
+    // コンストラクタ相当の関数
     #[wasm_bindgen(constructor)]
-    pub fn new(x: f32, y: f32) -> Player {
-        Player { x, y }
+    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Player {
+        Player { x, y, width, height, life: 3, }
     }
 
-    pub fn move_left(&mut self) {
-        self.x -= 10.0;
+    pub fn decrease_life(&mut self) {
+        if self.life > 0 {
+            self.life -= 1;
+        }
     }
 
-    pub fn move_right(&mut self) {
-        self.x += 10.0;
+    // プレイヤーのライフを取得
+    pub fn get_life(&self) -> u32 {
+        self.life
     }
 
+    // プレイヤーの現在の位置を返すメソッド
     pub fn get_position(&self) -> Array {
         let arr = Array::new();
         arr.push(&JsValue::from(self.x));
         arr.push(&JsValue::from(self.y));
         arr
     }
-}
 
+    // 左に移動するメソッド
+    pub fn move_left(&mut self, canvas_width: f32) {
+        if self.x > self.width / 2.0 {
+            self.x -= 30.0; // 左に移動
+        }
+    }
+
+    // 右に移動するメソッド
+    pub fn move_right(&mut self, canvas_width: f32) {
+        if self.x < canvas_width - self.width / 2.0 {
+            self.x += 30.0; // 右に移動
+        }
+    }
+}
