@@ -1,14 +1,11 @@
 use wasm_bindgen::prelude::*;
 use crate::position::Position;
 
-#[wasm_bindgen]
 pub struct Bullet {
-    position: Position,
+    pub position: Position,
 }
 
-#[wasm_bindgen]
 impl Bullet {
-    #[wasm_bindgen(constructor)]
     pub fn new(x: f32, y: f32) -> Bullet {
         Bullet { position: Position::new(x, y) }
     }

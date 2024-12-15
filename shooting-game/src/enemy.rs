@@ -1,15 +1,13 @@
 use wasm_bindgen::prelude::*;
 use crate::position::Position;
 
-#[wasm_bindgen]
+#[derive(Clone, Copy)]
 pub struct Enemy {
-    position: Position,
-    speed: f32,
+    pub position: Position,
+    pub speed: f32,
 }
 
-#[wasm_bindgen]
 impl Enemy {
-    #[wasm_bindgen(constructor)]
     pub fn new(x: f32, y: f32) -> Enemy {
         Enemy { position: Position::new(x, y), speed: 2.0 }
     }

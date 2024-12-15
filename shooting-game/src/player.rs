@@ -1,21 +1,15 @@
 use wasm_bindgen::prelude::*;
-use js_sys::Array;
-use image::GenericImageView;
 use crate::position::Position;
 
-#[wasm_bindgen]
 pub struct Player {
-    position: Position,
-    width: f32,
-    height: f32,
-    life: u32,
+    pub position: Position,
+    pub width: f32,
+    pub height: f32,
+    pub life: u32,
 }
 
-
-#[wasm_bindgen]
 impl Player {
     // コンストラクタ相当の関数
-    #[wasm_bindgen(constructor)]
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Player {
         Player { position: Position::new(x, y), width, height, life: 3, }
     }

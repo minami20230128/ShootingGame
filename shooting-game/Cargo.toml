@@ -7,7 +7,19 @@ edition = "2021"
 wasm-bindgen = "0.2"
 js-sys = "0.3"
 image = "0.24"
-web-sys = { version = "0.3", features = ["console"] }
+wasm-bindgen-futures = "0.4.5"
+anyhow = "1.0.51"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    'console',
+    'CanvasRenderingContext2d',
+    'HtmlCanvasElement',
+    'HtmlImageElement',
+    'Window',
+    'Document',
+]
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
