@@ -1,5 +1,3 @@
-use wasm_bindgen::prelude::*;
-
 #[derive(Clone, Copy)]
 pub struct Position{
     pub x: f32,

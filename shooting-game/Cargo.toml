@@ -9,6 +9,7 @@ js-sys = "0.3"
 image = "0.24"
 wasm-bindgen-futures = "0.4.5"
 anyhow = "1.0.51"
+console_error_panic_hook = "0.1.7"
 
 [dependencies.web-sys]
 version = "0.3"
@@ -19,6 +20,8 @@ features = [
     'HtmlImageElement',
     'Window',
     'Document',
+    'KeyboardEvent',
+    'MouseEvent',
 ]
 
 [lib]

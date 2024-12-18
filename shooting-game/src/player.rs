@@ -1,4 +1,3 @@
-use wasm_bindgen::prelude::*;
 use crate::position::Position;
 
 pub struct Player {
@@ -10,8 +9,8 @@ pub struct Player {
 
 impl Player {
     // コンストラクタ相当の関数
-    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Player {
-        Player { position: Position::new(x, y), width, height, life: 3, }
+    pub fn new(x: f32, y: f32 ) -> Player {
+        Player { position: Position::new(x, y), width: 180.0, height: 180.0, life: 3, }
     }
 
     pub fn decrease_life(&mut self) {

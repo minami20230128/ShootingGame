@@ -1,35 +1,41 @@
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::{
-    closure::WasmClosure, closure::WasmClosureFnOnce, prelude::Closure, JsCast, JsValue,
+    prelude::Closure, JsCast, JsValue,
 };
 use wasm_bindgen_futures;
 use anyhow::{anyhow, Result};
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, window, Document};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, window};
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::enemy::Enemy;
 use crate::player::Player;
 use crate::bullet::Bullet;
-use crate::renderer::Renderer;
+use crate::renderer::{self, Renderer};
+use crate::logger::Logger;
+use crate::game_state::GameState;
 
 pub struct Game {
-    canvas: HtmlCanvasElement,
-    ctx: CanvasRenderingContext2d,
-    renderer: Renderer,
+    pub canvas: HtmlCanvasElement,
+    pub renderer: Renderer,
     player: Player,
     bullets: Vec<Bullet>,
-    enemies: Vec<Enemy>,
+    enemies: Rc<RefCell<Vec<Enemy>>>,
     score: u32,
-    running: Rc<RefCell<bool>>,
+    state : GameState,
+    keys_pressed: Vec<String>,
+    last_enemy_spawn: f64,
+    enemy_spawn_interval: f64,
+    is_paused: bool,
 }
 
 impl Game {
     pub fn new(canvas_id: &str) -> Result<Game, JsValue> {
         let document = window().unwrap().document().unwrap();
-        let canvas = document
+
+        let canvas: HtmlCanvasElement = document
             .get_element_by_id(canvas_id)
             .unwrap()
             .dyn_into::<HtmlCanvasElement>()?;
+
         let ctx = canvas
             .get_context("2d")?
             .unwrap()
@@ -37,78 +43,87 @@ impl Game {
 
         Ok(Game {
             canvas,
-            ctx: ctx.clone(),
             renderer: Renderer::new(ctx),
-            player: Player::new(400.0, 500.0, 180.0, 180.0),
+            player: Player::new(400.0, 500.0),
             bullets: Vec::new(),
-            enemies: Vec::new(),
+            enemies: Rc::new(RefCell::new(Vec::new())),
             score: 0,
-            running: Rc::new(RefCell::new(true)),
+            state: GameState::Playing,
+            keys_pressed: Vec::new(),
+            last_enemy_spawn: 0.0,
+            enemy_spawn_interval: 2000.0,
+            is_paused: false,
         })
     }
 
-    pub fn init(&mut self) -> Result<(), JsValue> {
-        self.renderer.load_images();
-        self.spawn_enemies();
-        self.start_game_loop();
-        Ok(())
-    }
+    pub fn setup_event_listeners(game_rc: Rc<RefCell<Self>>) {
+        let game_clone = game_rc.clone();
+        let canvas = game_clone.borrow().canvas.clone();
 
-    fn spawn_enemies(&self) {
-        let enemies = self.enemies.clone();
-        let canvas_width = self.canvas.width() as f64;
-        let running = self.running.clone();
+        let closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
+            let mut game = game_clone.borrow_mut();
+            game.toggle_pause(); // クリックでポーズ状態を切り替える
+        }) as Box<dyn FnMut(_)>);
 
-        wasm_bindgen_futures::spawn_local(async move {
-            loop {
-                if !*running.borrow() {
-                    break;
-                }
-
-                let x = js_sys::Math::random() * canvas_width;
-                enemies.push(Enemy::new(x, 0.0));
-                wasm_bindgen_futures::JsFuture::from(js_sys::Promise::new(&mut |resolve, _| {
-                    let window = window().unwrap();
-                    let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, 2000);
-                })).await.unwrap();
-            }
-        });
-    }
-
-    fn start_game_loop(&self) {
-        let running = self.running.clone();
-        let game = Rc::new(RefCell::new(self.clone()));
-
-        type SharedLoopClosure = Rc<RefCell<Option<Closure<dyn FnMut(f64)>>>>;
-        let f: SharedLoopClosure = Rc::new(RefCell::new(None));
-        let g = f.clone();
-
-        *g.borrow_mut() = Some(Closure::wrap(Box::new({
-            let running = running.clone();
-            let game = game.clone();
-
-            move |timestamp: f64| {
-                if !*running.borrow() {
-                    return;
-                }
-
-                game.borrow_mut().update();
-                game.borrow_mut().render();
-
-                if let Some(ref closure) = f.borrow().as_ref() {
-                    window()
-                        .unwrap()
-                        .request_animation_frame(closure.as_ref().unchecked_ref())
-                        .unwrap();
-                }
-            }
-        }) as Box<dyn FnMut(f64)>));
-
-
-        window()
-            .unwrap()
-            .request_animation_frame(g.borrow().as_ref().unwrap().as_ref().unchecked_ref())
+        canvas
+            .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())
             .unwrap();
+        closure.forget(); // クロージャをメモリに保持させる
+    }
+
+    pub fn start(game_rc: Rc<RefCell<Self>>) {
+        let closure = Closure::wrap(Box::new(move |timestamp: f64| {
+            let mut game = game_rc.borrow_mut();
+            if game.state == GameState::Playing && !game.is_paused {
+                game.process_frame(timestamp);
+
+                // 再度アニメーションフレームを要求
+                Game::start(game_rc.clone());
+            } else if game.state == GameState::GameOver {
+                game.renderer.draw_life(game.player.get_life(), &game.canvas);
+                game.game_over();
+            } else if game.is_paused {
+                Game::start(game_rc.clone()); // 次のフレームもポーズ中の画面を保持
+            }
+        }) as Box<dyn FnMut(f64)>);
+
+        web_sys::window()
+            .unwrap()
+            .request_animation_frame(closure.as_ref().unchecked_ref())
+            .unwrap();
+
+        closure.forget(); // クロージャをメモリに保持させる
+    }
+
+    pub fn toggle_pause(&mut self) {
+        self.is_paused = !self.is_paused;
+    }
+
+    fn process_frame(&mut self, current_time: f64) {
+        if self.last_enemy_spawn == 0.0 {
+            self.last_enemy_spawn = current_time;
+        }
+
+        if current_time - self.last_enemy_spawn > self.enemy_spawn_interval {
+            self.spawn_enemy();
+            self.last_enemy_spawn = current_time;
+        }
+
+        self.update();
+        self.render();
+    }
+
+    fn spawn_enemy(&mut self) {
+        let mut enemies = self.enemies.clone();
+        let canvas_width = self.canvas.width() as f64;
+        let state = self.state.clone();
+    
+        if state != GameState::Playing {
+            return;
+        }
+
+        let x = (js_sys::Math::random() * canvas_width) as f32;
+        enemies.borrow_mut().push(Enemy::new(x, 0.0));
     }
 
     fn update(&mut self) {
@@ -116,28 +131,154 @@ impl Game {
             bullet.move_up();
         }
 
-        for enemy in &mut self.enemies {
+        for enemy in self.enemies.borrow_mut().iter_mut() {
             enemy.move_down();
         }
 
         self.check_collisions();
     }
 
+    // 衝突判定をチェックするメイン関数
     fn check_collisions(&mut self) {
-        // Implement collision logic
+        //Logger::log(&format!("life: {}", self.player.get_life()));
+        
+        // 弾と敵の衝突判定
+        self.check_bullet_enemy_collisions();
+
+        // プレイヤーと敵の衝突判定
+        self.check_player_enemy_collisions();
+    }
+
+    // 弾と敵の衝突判定
+    fn check_bullet_enemy_collisions(&mut self) {
+        let collision_threshold = 150.0;
+
+        let mut i = 0;
+        let mut enems = self.enemies.borrow_mut();
+
+        while i < self.bullets.len() {
+            let bullet = &self.bullets[i];
+            let bullet_position = bullet.get_position();
+        
+            let mut j = 0;
+            
+            while j < enems.len() {
+                let enemy = &enems[j];
+                let enemy_position = enemy.get_position();
+        
+                let distance = ((bullet_position.x - enemy_position.x).powi(2)
+                    + (bullet_position.y - enemy_position.y).powi(2))
+                    .sqrt();
+        
+                if distance < collision_threshold {
+                    // 衝突した場合、弾と敵を削除しスコアを加算
+                    enems.remove(j);
+                    self.bullets.remove(i);
+                    self.score += 10;
+                    break; // 1つの弾が複数の敵に当たらないように
+                } else {
+                    j += 1;
+                }
+            }
+            if j == enems.len() {
+                i += 1;
+            }
+        }
+    }
+
+    fn check_player_enemy_collisions(&mut self) {
+        let mut k = 0;
+        let mut enems = self.enemies.borrow_mut();
+    
+        while k < enems.len() {
+            let enemy = &enems[k];
+
+            let collision_threshold = 120.0;
+            Logger::log(&format!("threshold: {}", collision_threshold));
+    
+            // 敵の中央の座標を計算
+            let enemy_center_x = enemy.get_position().x + enemy.width / 2.0;
+            let enemy_center_y = enemy.get_position().y + enemy.height / 2.0;
+    
+            // プレイヤーの中央の座標を計算
+            let player_center_x = self.player.get_position().x + self.player.width / 2.0;
+            let player_center_y = self.player.get_position().y + self.player.height / 2.0;
+    
+            // 中央同士の距離を計算
+            let distance = ((player_center_x - enemy_center_x).powi(2)
+                + (player_center_y - enemy_center_y).powi(2))
+                .sqrt();
+
+            Logger::log(&format!("distance: {}", distance));
+    
+            if distance < collision_threshold {
+                // 衝突した場合、プレイヤーのライフを減らし、敵を削除
+                self.player.decrease_life();
+                enems.remove(k);
+    
+                // プレイヤーのライフが0ならゲームオーバー
+                if self.player.get_life() == 0 {
+                    self.state = GameState::GameOver;
+                }
+            } else {
+                k += 1;
+            }
+        }
+    }
+
+    pub fn key_down(&mut self, key: String) {
+        if !self.keys_pressed.contains(&key) {
+            self.keys_pressed.push(key.clone());
+        }
+
+        if key == " " || key == "Space" {
+            // スペースバーが押された場合、弾丸を発射
+            self.fire_bullet();
+        }
+
+        if key == "ArrowRight" {
+            // 右矢印キーが押された場合、プレイヤーを右に移動
+            self.player.move_right(self.canvas.width() as f32);
+        } 
+
+        if key == "ArrowLeft" {
+            // 左矢印キーが押された場合、プレイヤーを左に移動
+            self.player.move_left(self.canvas.width() as f32);
+        }
+    }
+
+    pub fn key_up(&mut self, key: String) {
+        if let Some(pos) = self.keys_pressed.iter().position(|x| *x == key) {
+            self.keys_pressed.remove(pos);
+        }
+    }
+
+    pub fn fire_bullet(&mut self) {
+        let bullet = Bullet::new(
+            self.player.position.x, 
+            self.player.position.y - self.player.height
+        );
+        self.bullets.push(bullet);
     }
 
     fn render(&self) {
-        self.renderer.clear();
-        self.renderer.draw_background();
+        self.renderer.clear(&self.canvas);
+        self.renderer.draw_background(&self.canvas);
         self.renderer.draw_player(&self.player);
         self.renderer.draw_bullets(&self.bullets);
-        self.renderer.draw_enemies(&self.enemies);
-        self.renderer.draw_score(self.score);
+        self.renderer.draw_enemies(&self.enemies.borrow());
+        self.renderer.draw_score(self.score, &self.canvas);
+        self.renderer.draw_life(self.player.get_life(), &self.canvas);
+
+                // 中心座標の点を描画
+        self.renderer.draw_center_points(
+            &self.player,
+            &self.bullets,
+            &self.enemies.borrow(),
+        );
     }
 
-    pub fn game_over(&self) {
-        *self.running.borrow_mut() = false;
+    pub fn game_over(&mut self) {
         web_sys::window()
             .unwrap()
             .alert_with_message("Game Over!")
