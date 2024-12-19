@@ -12,6 +12,8 @@ use crate::bullet::Bullet;
 use crate::renderer::{self, Renderer};
 use crate::logger::Logger;
 use crate::game_state::GameState;
+use crate::enemy_type::EnemyType;
+use crate::enemy_type::EnemySpawnInfo;
 
 pub struct Game {
     pub renderer: Renderer,
@@ -22,7 +24,7 @@ pub struct Game {
     state : GameState,
     keys_pressed: Vec<String>,
     last_enemy_spawn: f64,
-    enemy_spawn_interval: f64,
+    enemies_spawn_info: Vec<EnemySpawnInfo>,
 }
 
 impl Game {
@@ -38,7 +40,13 @@ impl Game {
             state: GameState::Playing,
             keys_pressed: Vec::new(),
             last_enemy_spawn: 0.0,
-            enemy_spawn_interval: 2000.0,
+            enemies_spawn_info: vec![
+                EnemySpawnInfo {
+                    enemy_type: EnemyType::Regular,
+                    spawn_interval: 2000.0, // 2秒間隔
+                    last_spawn_time: 0.0,
+                }
+            ],
         })
     }
 
@@ -69,16 +77,19 @@ impl Game {
             self.last_enemy_spawn = current_time;
         }
 
-        if current_time - self.last_enemy_spawn > self.enemy_spawn_interval {
-            self.spawn_enemy();
-            self.last_enemy_spawn = current_time;
+        let regular_enemy_info = self.enemies_spawn_info.get(0).unwrap();
+        if current_time - regular_enemy_info.last_spawn_time > regular_enemy_info.spawn_interval {
+            self.spawn_enemy(EnemyType::Regular);
+            if let Some(spawn_info) = self.enemies_spawn_info.get_mut(0) {
+                spawn_info.last_spawn_time = current_time;
+            }
         }
 
         self.update();
         self.render();
     }
 
-    fn spawn_enemy(&mut self) {
+    fn spawn_enemy(&mut self, enemy_type: EnemyType) {
         let mut enemies = self.enemies.clone();
         let canvas_width = self.renderer.canvas.width() as f64;
         let state = self.state.clone();
@@ -88,7 +99,18 @@ impl Game {
         }
 
         let x = (js_sys::Math::random() * canvas_width) as f32;
-        enemies.borrow_mut().push(Enemy::new(x, 0.0));
+
+        match enemy_type {
+            EnemyType::Regular => {
+                enemies.borrow_mut().push(Enemy::new(x, 0.0));
+            }
+            EnemyType::Fast => {
+                //enemies.borrow_mut().push(Enemy::new(x, 0.0));
+            }
+            EnemyType::Strong => {
+                //enemies.borrow_mut().push(Enemy::new(x, 0.0));
+            }
+        }
     }
 
     fn update(&mut self) {

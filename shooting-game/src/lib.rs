@@ -7,6 +7,7 @@ mod game;
 mod logger;
 mod game_state;
 mod engine;
+mod enemy_type;
 use wasm_bindgen::prelude::*;
 use crate::logger::Logger;
 
