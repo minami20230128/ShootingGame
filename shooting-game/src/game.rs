@@ -24,22 +24,11 @@ pub struct Game {
     keys_pressed: Vec<String>,
     last_enemy_spawn: f64,
     enemy_spawn_interval: f64,
-    is_paused: bool,
 }
 
 impl Game {
-    pub fn new(canvas_id: &str) -> Result<Game, JsValue> {
-        let document = window().unwrap().document().unwrap();
-
-        let canvas: HtmlCanvasElement = document
-            .get_element_by_id(canvas_id)
-            .unwrap()
-            .dyn_into::<HtmlCanvasElement>()?;
-
-        let ctx = canvas
-            .get_context("2d")?
-            .unwrap()
-            .dyn_into::<CanvasRenderingContext2d>()?;
+    pub fn new(canvas: HtmlCanvasElement, ctx: CanvasRenderingContext2d) -> Result<Game, JsValue> {
+        Logger::log("Game new");
 
         Ok(Game {
             canvas,
@@ -52,29 +41,13 @@ impl Game {
             keys_pressed: Vec::new(),
             last_enemy_spawn: 0.0,
             enemy_spawn_interval: 2000.0,
-            is_paused: false,
         })
-    }
-
-    pub fn setup_event_listeners(game_rc: Rc<RefCell<Self>>) {
-        let game_clone = game_rc.clone();
-        let canvas = game_clone.borrow().canvas.clone();
-
-        let closure = Closure::wrap(Box::new(move |_event: web_sys::MouseEvent| {
-            let mut game = game_clone.borrow_mut();
-            game.toggle_pause(); // クリックでポーズ状態を切り替える
-        }) as Box<dyn FnMut(_)>);
-
-        canvas
-            .add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())
-            .unwrap();
-        closure.forget(); // クロージャをメモリに保持させる
     }
 
     pub fn start(game_rc: Rc<RefCell<Self>>) {
         let closure = Closure::wrap(Box::new(move |timestamp: f64| {
             let mut game = game_rc.borrow_mut();
-            if game.state == GameState::Playing && !game.is_paused {
+            if game.state == GameState::Playing {
                 game.process_frame(timestamp);
 
                 // 再度アニメーションフレームを要求
@@ -82,8 +55,6 @@ impl Game {
             } else if game.state == GameState::GameOver {
                 game.renderer.draw_life(game.player.get_life(), &game.canvas);
                 game.game_over();
-            } else if game.is_paused {
-                Game::start(game_rc.clone()); // 次のフレームもポーズ中の画面を保持
             }
         }) as Box<dyn FnMut(f64)>);
 
@@ -93,10 +64,6 @@ impl Game {
             .unwrap();
 
         closure.forget(); // クロージャをメモリに保持させる
-    }
-
-    pub fn toggle_pause(&mut self) {
-        self.is_paused = !self.is_paused;
     }
 
     fn process_frame(&mut self, current_time: f64) {
@@ -194,22 +161,16 @@ impl Game {
             let enemy = &enems[k];
 
             let collision_threshold = 120.0;
-            Logger::log(&format!("threshold: {}", collision_threshold));
+            //Logger::log(&format!("threshold: {}", collision_threshold));
     
-            // 敵の中央の座標を計算
-            let enemy_center_x = enemy.get_position().x + enemy.width / 2.0;
-            let enemy_center_y = enemy.get_position().y + enemy.height / 2.0;
+            let enemy_position = enemy.get_position();
+            let player_position = self.player.get_position();
     
-            // プレイヤーの中央の座標を計算
-            let player_center_x = self.player.get_position().x + self.player.width / 2.0;
-            let player_center_y = self.player.get_position().y + self.player.height / 2.0;
-    
-            // 中央同士の距離を計算
-            let distance = ((player_center_x - enemy_center_x).powi(2)
-                + (player_center_y - enemy_center_y).powi(2))
+            let distance = ((player_position.x - enemy_position.x).powi(2)
+                + (player_position.y - enemy_position.y).powi(2))
                 .sqrt();
 
-            Logger::log(&format!("distance: {}", distance));
+            //Logger::log(&format!("distance: {}", distance));
     
             if distance < collision_threshold {
                 // 衝突した場合、プレイヤーのライフを減らし、敵を削除
@@ -255,8 +216,8 @@ impl Game {
 
     pub fn fire_bullet(&mut self) {
         let bullet = Bullet::new(
-            self.player.position.x, 
-            self.player.position.y - self.player.height
+            self.player.position.x,
+            self.player.position.y
         );
         self.bullets.push(bullet);
     }
@@ -270,7 +231,7 @@ impl Game {
         self.renderer.draw_score(self.score, &self.canvas);
         self.renderer.draw_life(self.player.get_life(), &self.canvas);
 
-                // 中心座標の点を描画
+        // 中心座標の点を描画
         self.renderer.draw_center_points(
             &self.player,
             &self.bullets,

@@ -3,11 +3,13 @@ use crate::position::Position;
 
 pub struct Bullet {
     pub position: Position,
+    pub width: f32,
+    pub height: f32,
 }
 
 impl Bullet {
     pub fn new(x: f32, y: f32) -> Bullet {
-        Bullet { position: Position::new(x, y) }
+        Bullet { position: Position::new(x, y), width: 90.0, height: 90.0}
     }
 
     pub fn move_up(&mut self) {

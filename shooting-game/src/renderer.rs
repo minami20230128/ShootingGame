@@ -63,8 +63,8 @@ impl Renderer {
             for bullet in bullets {
                 self.ctx.draw_image_with_html_image_element(
                     bullet_image,
-                    (bullet.position.x - 35.0) as f64,
-                    bullet.position.y as f64,
+                    (bullet.position.x - bullet.width / 2.0) as f64,
+                    (bullet.position.y - bullet.height / 2.0) as f64,
                 ).unwrap();
             }
         }
@@ -75,8 +75,8 @@ impl Renderer {
             for enemy in enemies {
                 self.ctx.draw_image_with_html_image_element(
                     enemy_image,
-                    (enemy.position.x - 20.0) as f64,
-                    (enemy.position.y - 20.0) as f64
+                    (enemy.position.x - enemy.width / 2.0) as f64,
+                    (enemy.position.y - enemy.height / 2.0) as f64
                 ).unwrap();
             }
         }
@@ -103,8 +103,8 @@ impl Renderer {
 
     pub fn draw_center_points(&self, player: &Player, bullets: &Vec<Bullet>, enemies: &Vec<Enemy>) {
         // プレイヤーの中心座標
-        let player_center_x = player.position.x + player.width / 2.0;
-        let player_center_y = player.position.y + player.height / 2.0;
+        let player_center_x = player.position.x;
+        let player_center_y = player.position.y ;
         self.draw_point(player_center_x as f64, player_center_y as f64, "red");
 
         // 弾丸の中心座標
@@ -116,8 +116,8 @@ impl Renderer {
 
         // 敵の中心座標
         for enemy in enemies {
-            let enemy_center_x = enemy.position.x + enemy.width / 2.0;
-            let enemy_center_y = enemy.position.y + enemy.height / 2.0;
+            let enemy_center_x = enemy.position.x;
+            let enemy_center_y = enemy.position.y;
             self.draw_point(enemy_center_x as f64, enemy_center_y as f64, "green");
         }
     }
