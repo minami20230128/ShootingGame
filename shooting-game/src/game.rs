@@ -14,7 +14,6 @@ use crate::logger::Logger;
 use crate::game_state::GameState;
 
 pub struct Game {
-    pub canvas: HtmlCanvasElement,
     pub renderer: Renderer,
     player: Player,
     bullets: Vec<Bullet>,
@@ -27,12 +26,11 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(canvas: HtmlCanvasElement, ctx: CanvasRenderingContext2d) -> Result<Game, JsValue> {
+    pub fn new() -> Result<Game, JsValue> {
         Logger::log("Game new");
 
         Ok(Game {
-            canvas,
-            renderer: Renderer::new(ctx),
+            renderer: Renderer::new(),
             player: Player::new(400.0, 500.0),
             bullets: Vec::new(),
             enemies: Rc::new(RefCell::new(Vec::new())),
@@ -53,7 +51,7 @@ impl Game {
                 // 再度アニメーションフレームを要求
                 Game::start(game_rc.clone());
             } else if game.state == GameState::GameOver {
-                game.renderer.draw_life(game.player.get_life(), &game.canvas);
+                game.renderer.draw_life(game.player.get_life());
                 game.game_over();
             }
         }) as Box<dyn FnMut(f64)>);
@@ -82,7 +80,7 @@ impl Game {
 
     fn spawn_enemy(&mut self) {
         let mut enemies = self.enemies.clone();
-        let canvas_width = self.canvas.width() as f64;
+        let canvas_width = self.renderer.canvas.width() as f64;
         let state = self.state.clone();
     
         if state != GameState::Playing {
@@ -199,12 +197,12 @@ impl Game {
 
         if key == "ArrowRight" {
             // 右矢印キーが押された場合、プレイヤーを右に移動
-            self.player.move_right(self.canvas.width() as f32);
+            self.player.move_right(self.renderer.canvas.width() as f32);
         } 
 
         if key == "ArrowLeft" {
             // 左矢印キーが押された場合、プレイヤーを左に移動
-            self.player.move_left(self.canvas.width() as f32);
+            self.player.move_left(self.renderer.canvas.width() as f32);
         }
     }
 
@@ -223,13 +221,13 @@ impl Game {
     }
 
     fn render(&self) {
-        self.renderer.clear(&self.canvas);
-        self.renderer.draw_background(&self.canvas);
+        self.renderer.clear();
+        self.renderer.draw_background();
         self.renderer.draw_player(&self.player);
         self.renderer.draw_bullets(&self.bullets);
         self.renderer.draw_enemies(&self.enemies.borrow());
-        self.renderer.draw_score(self.score, &self.canvas);
-        self.renderer.draw_life(self.player.get_life(), &self.canvas);
+        self.renderer.draw_score(self.score);
+        self.renderer.draw_life(self.player.get_life());
 
         // 中心座標の点を描画
         self.renderer.draw_center_points(

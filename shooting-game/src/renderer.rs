@@ -1,19 +1,38 @@
 use anyhow::{anyhow, Result};
+use wasm_bindgen::JsCast;
 use crate::enemy::Enemy;
 use crate::player::Player;
 use crate::bullet::Bullet;
 use crate::logger::Logger;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, Window};
+use web_sys::{window, CanvasRenderingContext2d, Document, HtmlCanvasElement};
 
 pub struct Renderer {
     pub ctx: CanvasRenderingContext2d,
+    pub canvas: HtmlCanvasElement,
     images: std::collections::HashMap<String, web_sys::HtmlImageElement>,
 }
 
 impl Renderer {
-    pub fn new(ctx: CanvasRenderingContext2d,) -> Renderer {
+    pub fn new() -> Renderer {
+        let window = window().expect("no global `window` exists");
+        let document = window.document().unwrap();
+
+        let canvas: HtmlCanvasElement = document
+            .get_element_by_id("gameCanvas")
+            .unwrap()
+            .dyn_into::<HtmlCanvasElement>()
+            .expect("gameCanvas should be a HtmlCanvasElement");
+
+        let ctx = canvas
+            .get_context("2d")
+            .expect("should have 2d context")
+            .unwrap()
+            .dyn_into::<CanvasRenderingContext2d>()
+            .expect("gameCanvas should be a HtmlCanvasElement");
+
         Renderer {
             ctx,
+            canvas,
             images: std::collections::HashMap::new(),
         }
     }
@@ -34,11 +53,11 @@ impl Renderer {
         }
     }
 
-    pub fn clear(&self, canvas: &HtmlCanvasElement) {
-        self.ctx.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
+    pub fn clear(&self) {
+        self.ctx.clear_rect(0.0, 0.0, self.canvas.width() as f64, self.canvas.height() as f64);
     }
 
-    pub fn draw_background(&self, canvas: &HtmlCanvasElement) {
+    pub fn draw_background(&self) {
         if let Some(background) = self.images.get("background") {
             self.ctx.draw_image_with_html_image_element(
                 background,
@@ -82,20 +101,20 @@ impl Renderer {
         }
     }
 
-    pub fn draw_score(&self, score: u32, canvas: &HtmlCanvasElement) {
+    pub fn draw_score(&self, score: u32) {
         self.ctx.set_font("20px Arial");
         self.ctx.set_fill_style(&wasm_bindgen::JsValue::from_str("white"));
-        self.ctx.fill_text(&format!("Score: {}", score), 20.0, canvas.height() as f64 - 20.0).unwrap();
+        self.ctx.fill_text(&format!("Score: {}", score), 20.0, self.canvas.height() as f64 - 20.0).unwrap();
     }
 
-    pub fn draw_life(&self, life: u32, canvas: &HtmlCanvasElement) {
+    pub fn draw_life(&self, life: u32) {
         let heart_size = 45.0;
         if let Some(heart_image) = self.images.get("heart") {
             for i in 0..life {
                 self.ctx.draw_image_with_html_image_element(
                     heart_image,
-                    canvas.width() as f64 - 10.0 - (i + 1) as f64 * (heart_size + 5.0),
-                    canvas.height() as f64 - heart_size - 10.0
+                    self.canvas.width() as f64 - 10.0 - (i + 1) as f64 * (heart_size + 5.0),
+                    self.canvas.height() as f64 - heart_size - 10.0
                 ).unwrap();
             }
         }
@@ -129,5 +148,4 @@ impl Renderer {
         self.ctx.fill();
         self.ctx.close_path();
     }
- 
 }

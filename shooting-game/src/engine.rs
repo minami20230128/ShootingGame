@@ -1,5 +1,4 @@
 use crate::game::Game;
-use crate::position::Position;
 use std::cell::RefCell;
 use std::rc::Rc;
 use anyhow::{anyhow, Result};
@@ -23,23 +22,8 @@ pub fn start_game() {
     }
     let window = window().expect("no global window exists");
 
-    let document = window.document().unwrap();
-
-    let canvas: HtmlCanvasElement = document
-        .get_element_by_id("gameCanvas")
-        .unwrap()
-        .dyn_into::<HtmlCanvasElement>()
-        .expect("gameCanvas should be a HtmlCanvasElement");
-
-    let ctx = canvas
-        .get_context("2d")
-        .expect("should have 2d context")
-        .unwrap()
-        .dyn_into::<CanvasRenderingContext2d>()
-        .expect("gameCanvas should be a HtmlCanvasElement");
-
     // ゲームの初期化
-    let game_result = Game::new(canvas, ctx);
+    let game_result = Game::new();
 
     // Gameインスタンス生成のエラーハンドリング
     let game = match game_result {

@@ -8,7 +8,6 @@ mod logger;
 mod game_state;
 mod engine;
 use wasm_bindgen::prelude::*;
-use crate::game::Game;
 use crate::logger::Logger;
 
 #[wasm_bindgen(start)]
