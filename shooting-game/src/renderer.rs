@@ -1,15 +1,20 @@
+use std::sync::{Arc};
+use tokio::sync::Mutex;
+
 use anyhow::{anyhow, Result};
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
+use wasm_bindgen_futures::{spawn_local, JsFuture};
 use crate::enemy::Enemy;
 use crate::player::Player;
 use crate::bullet::Bullet;
 use crate::logger::Logger;
-use web_sys::{window, CanvasRenderingContext2d, Document, HtmlCanvasElement};
+use web_sys::{console, window, CanvasRenderingContext2d, Document, HtmlCanvasElement, HtmlImageElement};
 
+#[derive(Clone)]
 pub struct Renderer {
     pub ctx: CanvasRenderingContext2d,
     pub canvas: HtmlCanvasElement,
-    images: std::collections::HashMap<String, web_sys::HtmlImageElement>,
+    pub images: std::collections::HashMap<String, web_sys::HtmlImageElement>,
 }
 
 impl Renderer {
@@ -46,10 +51,27 @@ impl Renderer {
             ("background", "images/background.png"),
         ];
 
+        // Arc<Mutex<Renderer>> を作成
+        let renderer_arc = Arc::new(Mutex::new(self.clone()));
+
         for (name, src) in image_sources {
-            let image = web_sys::HtmlImageElement::new().unwrap();
-            image.set_src(src);
-            self.images.insert(name.to_string(), image);
+            let renderer_clone = Arc::clone(&renderer_arc); // renderer の clone を作成
+
+            spawn_local(async move {
+                match load_image(name, src).await {
+                    Ok(image) => {
+                        // 画像のロード成功後に Renderer の images に挿入
+                        let mut renderer = renderer_clone.lock().await;  // ここで lock() を await
+                        renderer.images.insert(name.to_string(), image);
+                        console::log_1(&format!("Image '{}' loaded successfully!", name).into());
+                        // 画像を使う処理をここで行う
+                    }
+                    Err(e) => {
+                        // 画像ロードに失敗した場合の処理
+                        console::log_1(&format!("Error loading image: {:?}", e).into());
+                    }
+                }
+            });
         }
     }
 
@@ -148,4 +170,38 @@ impl Renderer {
         self.ctx.fill();
         self.ctx.close_path();
     }
+}
+
+async fn load_image(name: &str, src: &str) -> Result<(HtmlImageElement), JsValue>{
+    let image = web_sys::HtmlImageElement::new().unwrap();
+    wait_for_image_to_load(&image).await?;
+    image.set_src(src);
+    Ok((image))
+}
+
+async fn wait_for_image_to_load(image: &HtmlImageElement) -> Result<(), JsValue> {
+    // JavaScript の Promise を作成
+    let promise = js_sys::Promise::new(&mut |resolve, reject| {
+        // onload イベントの設定
+        let resolve = resolve.clone();
+        let closure = Closure::wrap(Box::new(move || {
+            resolve.call0(&JsValue::NULL).unwrap();
+        }) as Box<dyn FnMut()>);
+
+        image.set_onload(Some(closure.as_ref().unchecked_ref()));
+        closure.forget();
+
+        // onerror イベントの設定（エラーハンドリング）
+        let reject = reject.clone();
+        let error_closure = Closure::wrap(Box::new(move || {
+            reject.call0(&JsValue::NULL).unwrap();
+        }) as Box<dyn FnMut()>);
+
+        image.set_onerror(Some(error_closure.as_ref().unchecked_ref()));
+        error_closure.forget();
+    });
+
+    // Promise が解決するのを待つ
+    JsFuture::from(promise).await?;
+    Ok(())
 }
