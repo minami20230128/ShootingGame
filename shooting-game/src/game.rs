@@ -1,20 +1,18 @@
 use wasm_bindgen::{
     prelude::Closure, JsCast, JsValue,
 };
-use wasm_bindgen_futures;
-use anyhow::{anyhow, Result};
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, window};
+use anyhow::Result;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::enemy::Enemy;
 use crate::player::Player;
 use crate::bullet::Bullet;
-use crate::renderer::{self, Renderer};
+use crate::renderer::Renderer;
 use crate::logger::Logger;
 use crate::game_state::GameState;
 use crate::enemy_type::EnemyType;
 use crate::enemy_type::EnemySpawnInfo;
-use crate::resource_loader::{self, ResourceLoader};
+use crate::resource_loader::ResourceLoader;
 
 pub struct Game {
     resource_loader: ResourceLoader, 
@@ -274,5 +272,7 @@ impl Game {
             .unwrap()
             .alert_with_message("Game Over!")
             .unwrap();
+
+        Renderer::put_button("restart");
     }
 }

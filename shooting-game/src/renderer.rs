@@ -1,10 +1,10 @@
-use anyhow::{anyhow, Result};
-use wasm_bindgen::{JsCast, JsValue};
+use anyhow::Result;
+use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
 use crate::enemy::Enemy;
 use crate::player::Player;
 use crate::bullet::Bullet;
 use crate::logger::Logger;
-use web_sys::{window, CanvasRenderingContext2d, Document, HtmlCanvasElement, HtmlImageElement};
+use web_sys::{window, CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, HtmlImageElement};
 
 pub struct Renderer {
     pub ctx: CanvasRenderingContext2d,
@@ -119,5 +119,29 @@ impl Renderer {
         self.ctx.set_fill_style(&wasm_bindgen::JsValue::from_str(color));
         self.ctx.fill();
         self.ctx.close_path();
+    }
+
+    pub fn put_button(inner_html : &str) -> Result<(), JsValue> {
+        let document = web_sys::window().unwrap().document().unwrap();
+        let button = document.create_element("button")?.dyn_into::<HtmlElement>()?;
+        button.set_inner_html(inner_html);
+        button
+        .set_attribute(
+            "style",
+            "position: absolute; top: 300px; left: 400px; z-index: 10;",
+        )
+        .unwrap();
+
+        let closure = Closure::wrap(Box::new(move || {
+            web_sys::console::log_1(&"Button clicked!".into());
+        }) as Box<dyn Fn()>);
+
+        button.add_event_listener_with_callback("click", closure.as_ref().unchecked_ref())?;
+        closure.forget(); // ClosureをJavaScriptで保持させる
+    
+        // <body>にボタンを追加
+        document.body().unwrap().append_child(&button)?;
+    
+        Ok(())
     }
 }

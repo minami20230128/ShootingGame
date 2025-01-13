@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shooting Game</title>
 </head>
+<style>
+    .button {
+        position: absolute;
+        top: 50px; /* ボタンの位置 */
+        left: 100px; /* ボタンの位置 */
+        z-index: 10; /* ボタンをcanvasの上に表示 */
+    }
+</style>
 <body>
     <img id="player" src="images/player.png" hidden>
     <img id="bullet" src="images/bullet.png" hidden>

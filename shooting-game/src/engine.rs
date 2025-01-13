@@ -1,14 +1,12 @@
-use crate::{game::Game, resource_loader::{self, ResourceLoader}};
+use crate::{game::Game, resource_loader::ResourceLoader};
 use std::cell::RefCell;
 use std::rc::Rc;
-use anyhow::{anyhow, Result};
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, window};
+use web_sys::window;
 use wasm_bindgen::{
-    prelude::Closure, JsCast, JsValue,
+    prelude::Closure, JsCast,
 };
 use crate::logger::Logger;
 
-pub struct GameLoop{}
 // グローバルなゲームインスタンス
 static mut GAME: Option<Rc<RefCell<Game>>> = None;
 
@@ -59,7 +57,7 @@ pub fn start_game() {
             .expect("failed to add keydown listener");
         key_down_closure.forget();
     }
-//
+
     {
         let game_rc = game.clone();
         let key_up_closure = Closure::wrap(Box::new(move |event: web_sys::KeyboardEvent| {

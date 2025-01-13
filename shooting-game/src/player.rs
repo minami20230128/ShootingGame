@@ -1,7 +1,5 @@
 use std::rc::Rc;
-
 use web_sys::HtmlImageElement;
-
 use crate::position::Position;
 
 pub struct Player {
