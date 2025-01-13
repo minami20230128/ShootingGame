@@ -1,29 +1,30 @@
-use crate::game::Game;
+use crate::{game::Game, resource_loader::ResourceLoader};
 use std::cell::RefCell;
 use std::rc::Rc;
-use anyhow::{anyhow, Result};
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, MouseEvent, window};
+use web_sys::window;
 use wasm_bindgen::{
-    prelude::Closure, JsCast, JsValue,
+    prelude::Closure, JsCast,
 };
 use crate::logger::Logger;
 
-pub struct GameLoop{}
 // グローバルなゲームインスタンス
 static mut GAME: Option<Rc<RefCell<Game>>> = None;
 
 pub fn start_game() {
     Logger::log("start_game");
-    unsafe {
-        if GAME.is_some() {
-            web_sys::console::log_1(&"Game is already initialized".into());
-            return;
-        }
-    }
+    //unsafe {
+    //    if GAME.is_some() {
+    //        web_sys::console::log_1(&"Game is already initialized".into());
+    //        return;
+    //    }
+    //}
+    let mut resource_loader = ResourceLoader::new();
+    resource_loader.load_images();
+
     let window = window().expect("no global window exists");
 
     // ゲームの初期化
-    let game_result = Game::new();
+    let game_result = Game::new(resource_loader);
 
     // Gameインスタンス生成のエラーハンドリング
     let game = match game_result {
@@ -56,7 +57,7 @@ pub fn start_game() {
             .expect("failed to add keydown listener");
         key_down_closure.forget();
     }
-//
+
     {
         let game_rc = game.clone();
         let key_up_closure = Closure::wrap(Box::new(move |event: web_sys::KeyboardEvent| {
@@ -68,7 +69,6 @@ pub fn start_game() {
             .expect("failed to add keyup listener");
         key_up_closure.forget();
     }
-//
-    game.borrow_mut().renderer.load_images();
+
     Game::start(game.clone());
 }

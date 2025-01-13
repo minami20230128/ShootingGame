@@ -1,17 +1,18 @@
+use std::rc::Rc;
+use web_sys::HtmlImageElement;
 use crate::position::Position;
 
 pub struct Player {
     pub position: Position,
-    pub width: f32,
-    pub height: f32,
     life: u32,
     velocity: u32,
+    pub image: Rc<HtmlImageElement>
 }
 
 impl Player {
     // コンストラクタ相当の関数
-    pub fn new(x: f32, y: f32 ) -> Player {
-        Player { position: Position::new(x, y), width: 180.0, height: 180.0, life: 3, velocity: 30}
+    pub fn new(x: f32, y: f32, image: Rc<HtmlImageElement> ) -> Player {
+        Player { position: Position::new(x, y), life: 3, velocity: 30, image}
     }
 
     pub fn decrease_life(&mut self) {
@@ -32,14 +33,14 @@ impl Player {
 
     // 左に移動するメソッド
     pub fn move_left(&mut self, canvas_width: f32) {
-        if self.position.x > self.width / 2.0 {
+        if self.position.x > self.image.width() as f32 / 2.0 {
             self.position.x -= self.velocity as f32; // 左に移動
         }
     }
 
     // 右に移動するメソッド
     pub fn move_right(&mut self, canvas_width: f32) {
-        if self.position.x < canvas_width - self.width / 2.0 {
+        if self.position.x < canvas_width - self.image.width() as f32 / 2.0 {
             self.position.x += self.velocity as f32; // 右に移動
         }
     }
