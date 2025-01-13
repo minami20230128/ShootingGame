@@ -23,6 +23,7 @@ features = [
     'Document',
     'KeyboardEvent',
     'MouseEvent',
+    'NodeList',
 ]
 
 [lib]

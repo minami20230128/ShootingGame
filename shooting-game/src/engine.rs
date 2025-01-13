@@ -12,12 +12,12 @@ static mut GAME: Option<Rc<RefCell<Game>>> = None;
 
 pub fn start_game() {
     Logger::log("start_game");
-    unsafe {
-        if GAME.is_some() {
-            web_sys::console::log_1(&"Game is already initialized".into());
-            return;
-        }
-    }
+    //unsafe {
+    //    if GAME.is_some() {
+    //        web_sys::console::log_1(&"Game is already initialized".into());
+    //        return;
+    //    }
+    //}
     let mut resource_loader = ResourceLoader::new();
     resource_loader.load_images();
 

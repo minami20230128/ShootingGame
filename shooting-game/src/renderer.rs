@@ -1,10 +1,10 @@
 use anyhow::Result;
 use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
-use crate::enemy::Enemy;
+use crate::{enemy::Enemy, engine};
 use crate::player::Player;
 use crate::bullet::Bullet;
 use crate::logger::Logger;
-use web_sys::{window, CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, HtmlImageElement};
+use web_sys::{window, CanvasRenderingContext2d, HtmlCanvasElement, HtmlElement, HtmlImageElement, NodeList};
 
 pub struct Renderer {
     pub ctx: CanvasRenderingContext2d,
@@ -133,6 +133,8 @@ impl Renderer {
         .unwrap();
 
         let closure = Closure::wrap(Box::new(move || {
+            engine::start_game();
+            Renderer::remove_all_buttons();
             web_sys::console::log_1(&"Button clicked!".into());
         }) as Box<dyn Fn()>);
 
@@ -142,6 +144,24 @@ impl Renderer {
         // <body>にボタンを追加
         document.body().unwrap().append_child(&button)?;
     
+        Ok(())
+    }
+
+    pub fn remove_all_buttons() -> Result<(), JsValue> {
+        let document = web_sys::window().unwrap().document().unwrap();
+
+        // ページ内のすべてのボタン要素を取得
+        let buttons: NodeList = document.query_selector_all("button").unwrap();
+
+        // ボタン要素を削除する
+        for i in (0..buttons.length()).rev() {
+            if let Some(button) = buttons.get(i) {
+                if let Some(button_element) = button.dyn_ref::<HtmlElement>() {
+                    button_element.remove();
+                }
+            }
+        }
+
         Ok(())
     }
 }
